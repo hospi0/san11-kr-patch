@@ -1,0 +1,82 @@
+# idx5(entry5) 잔여 필드 — 기존 파이프라인 미커버분만. 구조 = docs/15
+# 76필드 / 579자. budget = 널 포함 안 한 텍스트 최대 바이트(실측 스탯 런 경계)
+# ⚠️kr 비우면 원본 유지. ⚠️지형 이름 cap 4B = 한글 2음절 하드 리밋(+0x05가 읽기)
+# ⚠️번역문에 한자 금지(운반체). 기존 번역과 용어 일치시킬 것: 초원·땅·모래·강·바다·
+#   하천·황야·대로·나루·물가·벼랑(지형11 실기 통과분) / 관문·본성·여울(facilities)
+table	k	field	off	budget	jp	kr
+fac	4	desc	0xe94	70	周囲３マスの味方部隊の防御強化、兵糧消費軽減	주위 3칸 아군 부대 병량소비·피해 경감(진보다 큼)
+fac	6	desc	0x100e	70	周囲２マスの敵部隊に毎ターン弓矢攻撃	주위 2칸 적 부대에 매턴 화살 공격
+fac	7	desc	0x10cb	70	周囲３マスの敵部隊に毎ターン弓矢攻撃	주위 3칸 적 부대에 매턴 연노 공격
+fac	10	desc	0x1302	70	周囲２～３マスの敵部隊に毎ターン投石攻撃	주위 2~3칸 적 부대에 매턴 투석 공격
+fac	12	desc	0x147c	70	周囲２マスの味方部隊の気力回復	주위 2칸 아군 부대 기력 회복
+fac	14	desc	0x15f6	70	異民族の拠点	이민족의 거점
+fac	15	desc	0x16b3	70	賊の拠点	도적의 거점
+fac	16	name	0x1752	8	火種	화종
+fac	16	desc	0x1770	70	隣接マスに引火する	인접 칸에 인화한다
+fac	17	desc	0x182d	70	周囲２マスに引火する	주위 2칸에 인화한다
+fac	18	name	0x18cc	8	火球	화구
+fac	18	desc	0x18ea	70	引火しながら３マス転がる	인화하며 3칸 구른다
+fac	19	desc	0x19a7	70	引火しながら５マス転がる	인화하며 5칸 구른다
+fac	20	name	0x1a46	8	火船	화선
+fac	20	desc	0x1a64	70	隣接マスに引火する。水上に設置できる	인접 칸에 인화. 수상 설치 가능
+fac	21	desc	0x1b21	70	引火しながら４マス転がる。建物を突き抜ける	인화하며 4칸 구른다. 건물 관통
+fac	22	name	0x1bc0	8	業火種	업화종
+fac	22	desc	0x1bde	70	周囲２マスに引火し、敵部隊を混乱させる	주위 2칸에 인화, 적 부대 혼란
+fac	24	desc	0x1d58	70	破壊すると周囲を水攻めにする罠	파괴 시 주위를 수공에 빠뜨림
+fac	26	name	0x1eb4	8	山岳	산악
+fac	28	name	0x202e	8	遺跡	유적
+fac	30	name	0x21a8	8	銅雀台	동작대
+fac	31	name	0x2265	8	市場 Lv1	시장 Lv1
+fac	31	cond	0x22ca	86	吸収合併可能	흡수 합병 가능
+fac	32	name	0x2322	8	農場 Lv1	농장 Lv1
+fac	32	cond	0x2387	86	吸収合併可能	흡수 합병 가능
+fac	33	name	0x23df	8	兵舎 Lv1	병영 Lv1
+fac	33	cond	0x2444	86	吸収合併可能	흡수 합병 가능
+fac	34	name	0x249c	10	鍛冶 Lv1	대장간 Lv1
+fac	34	cond	0x2501	86	吸収合併可能	흡수 합병 가능
+fac	35	name	0x2559	8	厩舎 Lv1	마사 Lv1
+fac	35	cond	0x25be	86	吸収合併可能	흡수 합병 가능
+fac	49	cond	0x3014	86	１都市１つのみ	1도시 1개만
+fac	50	name	0x306c	8	市場 Lv2	시장 Lv2
+fac	51	name	0x3129	8	市場 Lv3	시장 Lv3
+fac	52	name	0x31e6	8	農場 Lv2	농장 Lv2
+fac	53	name	0x32a3	8	農場 Lv3	농장 Lv3
+fac	54	name	0x3360	8	兵舎 Lv2	병영 Lv2
+fac	55	name	0x341d	8	兵舎 Lv3	병영 Lv3
+fac	56	name	0x34da	10	鍛冶 Lv2	대장간 Lv2
+fac	57	name	0x3597	10	鍛冶 Lv3	대장간 Lv3
+fac	58	name	0x3654	8	厩舎 Lv2	마사 Lv2
+fac	59	name	0x3711	8	厩舎 Lv3	마사 Lv3
+wpn	0	desc	0x3adc	50	標準装備の兵装。威力は最弱	표준 장비 병장. 위력은 최약
+wpn	1	desc	0x3b72	121	騎兵に有利だが、戟兵に不利	기병에 유리하나 극병에 불리
+wpn	2	desc	0x3c08	121	槍兵に有利だが、騎兵に不利	창병에 유리하나 기병에 불리
+wpn	3	desc	0x3c9e	121	２マス先に弓矢攻撃可能	2칸 앞에 화살 공격 가능
+wpn	4	desc	0x3d34	121	戟兵に有利だが、槍兵に不利	극병에 유리하나 창병에 불리
+wpn	5	desc	0x3dca	121	建物に直接攻撃する兵器。建物の耐久を削る	건물을 직접 공격하는 병기. 건물 내구를 깎는다
+wpn	6	desc	0x3e60	121	建物に弓矢攻撃する兵器。拠点の兵士を削る	건물에 화살 공격하는 병기. 거점 병사를 깎는다
+wpn	7	desc	0x3ef6	121	井闌の強化版。投石攻撃で耐久と兵士を削る	정란의 강화판. 투석 공격으로 내구·병사를 깎는다
+wpn	8	desc	0x3f8c	121	衝車の強化版。火炎放射で建物の耐久を削る	충차의 강화판. 화염 방사로 건물 내구를 깎는다
+wpn	9	desc	0x4022	105	標準装備の艦船。	표준 장비 함선
+wpn	10	desc	0x40b8	121	大型船。移動力、装甲ともに走舸より強力	대형선. 이동력·장갑 모두 주가보다 강력
+wpn	11	desc	0x414e	121	楼船の強化版。投石攻撃が可能	누선의 강화판. 투석 공격 가능
+ter	0	name	0x8a54	4	草地	초원
+ter	1	name	0x8a6b	4	土	땅
+ter	2	name	0x8a82	4	砂地	모래
+ter	3	name	0x8a99	4	湿地	습지
+ter	4	name	0x8ab0	4	毒泉	독천
+ter	5	name	0x8ac7	4	森	숲
+ter	6	name	0x8ade	4	川	하천
+ter	7	name	0x8af5	4	河	강
+ter	8	name	0x8b0c	4	海	바다
+ter	9	name	0x8b23	4	荒地	황야
+ter	10	name	0x8b3a	4	本道	대로
+ter	11	name	0x8b51	4	桟道	잔도
+ter	12	name	0x8b68	4	渡	나루
+ter	13	name	0x8b7f	4	浅瀬	여울
+ter	14	name	0x8b96	4	岸	물가
+ter	15	name	0x8bad	4	崖	벼랑
+ter	16	name	0x8bc4	4	都市	도시
+ter	17	name	0x8bdb	4	関所	관문
+ter	18	name	0x8bf2	4	港	항
+ter	19	name	0x8c09	4	間道	간도
+rank	80	name	0x51e2	10	なし	없음
