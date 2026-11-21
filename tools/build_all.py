@@ -151,6 +151,13 @@ def main():
     run('6/9 HUD', ['tools/poke_hud.py', iso])
     run('7/9 글리프 검증', ['analysis/verify_glyphs.py', iso, src])
     run('8/9 결전제패 타이틀', ['tools/patch_kessen_titles.py', iso])
+    run('8b/9 타이틀 로고(큰·작은, 하스피 그림)', ['tools/title_logo_kr.py', 'apply', iso])
+    if '--no-movie' in sys.argv:                     # 빠른 시험 빌드(하스피 2026-11-21) — 동영상은 원본 그대로
+        print('[8c/9] 동영상 생략(--no-movie) — 자막 없는 시험본')
+    else:
+        run('8c/9 동영상 한글 자막', ['tools/movie_install.py', iso, src])
+    run('8d/9 승리·패배·제패 그림(하스피 그림)', ['tools/result_words_kr.py', 'apply', iso])
+    run('8e/9 그림 글자 281장 + 일기토 장식 글자 깨끗한 판', ['tools/gfx_text_install.py', iso])
     make_xdelta(src, iso, arg('--xdelta', XDELTA))
 
     print('\n' + '=' * 68)

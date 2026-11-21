@@ -65,6 +65,9 @@ def ks_syllables():
     return out
 
 
+JAMO = 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ' + 'ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ'
+
+
 class Codec:
     def __init__(self, elf_path):
         d = open(elf_path, 'rb').read()
@@ -92,6 +95,10 @@ class Codec:
         self.kanji_pool = kanji
         self.syllables = syl
         self.enc = {ch: kanji[i] for i, ch in enumerate(syl)}   # Hangul -> carrier code
+        # 이름 입력 조합용 자모 40개(초성 19 + 중성 21) = 운반체 2350~2389 (2026-11-21, docs/17)
+        self.jamo = JAMO
+        for j, ch in enumerate(JAMO):
+            self.enc[ch] = kanji[len(syl) + j]
         self.keep = keep                                        # kept char -> its own code
         self.dec = {v: k for k, v in self.enc.items()}
 

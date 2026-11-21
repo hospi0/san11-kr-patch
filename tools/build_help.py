@@ -119,8 +119,21 @@ _KINSHIP = [
     ("妹", "누이"), ("弟", "아우"), ("孫", "손자"), ("姪", "조카"), ("甥", "조카"),
     ("一族", "일족"), ("友", "벗"),
 ]
+#   ★2026-11-21 하스피 실기 「이 임무는 꼭 소인에게表せてくれ」: `{01}C{ec}`=msg[236] 이 성격별로
+#   `{01}J{ed}` 로 msg[237] 에 점프하는데 두 테이블 모두 「(お)任せ…」 동사가 일본어 그대로였다
+#   (236 은 SAFE 였지만 단어표에 없는 말이라 안 바뀜, 237 은 SAFE 밖). 쓰는 18곳 전부 「~에게 ○○」·
+#   「지금은 ○○!」처럼 동사 하나를 통째로 받는 자리라 성격별 말투만 살려 한국어로 바꾼다. 긴 것부터.
+_MAKASE = [
+    ("お任せくださいませ", "맡겨 주시옵소서"), ("お任せくだされ", "맡겨 주시오"),
+    ("お任せください", "맡겨 주십시오"), ("任せてくだされ", "맡겨 주시오"),
+    ("任せてください", "맡겨 주십시오"), ("任せてくれ", "맡겨 주게"),
+    ("任せなさい", "맡겨 두시오"), ("任せろ", "맡겨라"),
+]
+PART1_SAFE_INDICES |= {237}
 PART1_MSG_REPL = {
     14: [("貴公", "귀공")],
+    236: _MAKASE,
+    237: _MAKASE,
     64: _KINSHIP,
     87: _KINSHIP,
     65: [("義兄弟", "의형제"), ("夫婦", "부부"), ("親子", "부자"),
@@ -211,7 +224,9 @@ def read_kr():
     for ln in io.open(TSV, encoding="utf-8"):
         p = ln.rstrip("\n").split("\t")
         if len(p) >= 5 and p[0].isdigit():
-            kr[int(p[1], 16)] = U.normalize("NFC", p[4]).strip()
+            v = U.normalize("NFC", p[4])
+            # 공백만 = «일부러 비움»(2026-11-21 이름 입력 빈 판 안내문) — strip 으로 지우면 미번역으로 보고 일본어 원문이 남는다
+            kr[int(p[1], 16)] = "<<EMPTY>>" if v and not v.strip() else v.strip()
     return kr
 
 
@@ -316,6 +331,10 @@ def main():
             continue
         pre, body, suf = split_pad(seg)
         t = kr.get(offs[i], "")
+        if t == "<<EMPTY>>" and i >= PART2_START_INDEX:
+            bodies.append(pre + suf)            # 일부러 비운 칸 = 빈 문자열
+            n_tr += 1
+            continue
         if i < PART2_START_INDEX or not t:
             bodies.append(seg)                  # 조립 테이블·미번역 = 원본 보존
             n_keep += 1

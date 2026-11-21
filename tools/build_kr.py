@@ -43,6 +43,10 @@ PER, PIX, YBASE = 224, 200, 19
 
 SIG = bytes.fromhex('98b00000008bd600000095b691a5')   # 于禁文則 (로스터 idx 6)
 FIELD, N_REC = 5, 900
+NAME_HOOK_ON = True       # 2026-11-21 이름 입력 한글 조합(tools/name_hook.py, docs/17) — OVERLAY1 + SLPM 동굴
+JOSA_HOOK_ON = True       # 2026-11-21 진짜 동굴로 옮김(josa_hook.CAVES — 실행 파일+OVERLAY1/2+RAM 무참조)
+EXTRA_REC = (1000, 1001)                                   # 범용 무장 칸(도적·오환)
+EXTRA_NAMES = {'賊': '적', '将': '장', '烏丸': '오환', '武将': '무장'}
 # (라벨, stride, 姓오프셋, 시그니처 개수)
 GROUP_A = ("A", 0x98, 0x58, 16)
 GROUP_B = ("B", 0xcb, 0x00, 36)
@@ -447,6 +451,13 @@ def main():
                     warns.append((label, hex(base), n, "%s%s: %s" % (js, jm, w)))
                     continue
                 recs.append((n, ks, km, kz))
+            # ★범용 무장 1000·1001번(도적 장수·오환 무장) — 0~899 밖이라 일본어로 남아 있었다(2026-11-21 전수 조사).
+            #   5바이트 칸(2음절)이라 한자 음 그대로.
+            for n in EXTRA_REC:
+                r = base + n * stride + sei_off
+                js, jm, jz = read_field(s11, r), read_field(s11, r + 5), read_field(s11, r + 10)
+                if js in EXTRA_NAMES and jm in EXTRA_NAMES:
+                    recs.append((n, EXTRA_NAMES[js], EXTRA_NAMES[jm], EXTRA_NAMES.get(jz, jz or "")))
             copies.append((base, stride, sei_off, recs))
     print("로스터 사본 %d벌 (A16 stride0x98 / B36 stride0xcb), 레코드 %d개"
           % (len(copies), sum(len(c[3]) for c in copies)))
@@ -607,6 +618,13 @@ def main():
         if d:
             syl |= {c for c in d if "가" <= c <= "힣"}
     syl = sorted(syl)
+    # ★★한글 완성형 2,350자 «전부» 그린다(2026-11-21 하스피 — 이름 입력 등 아무 음절이나 나올 수 있는 곳 대비).
+    #   운반체 배정은 Codec 에서 고정(음절 i ↔ i번째 한자 코드)이라 그리기만 하면 된다. 칸·크기·형식 불변.
+    #   (옛: 번역에 쓰인 음절만 — 안 쓴 음절은 운반체 한자가 비쳐 나왔다)
+    n_used = len(syl)
+    syl = sorted(set(syl) | set(codec.syllables))
+    print("글리프 대상: 번역에 쓰인 %d자 + 나머지 → 완성형 %d자 전부" % (n_used, len(syl)))
+    syl += list(codec.jamo)          # 이름 입력 조합용 자모 40개(운반체 2350~2389, docs/17)
 
     # ---- 1. 글리프 ----
     em, ratio = autofit_size(fontpath, ink_h)
@@ -630,26 +648,72 @@ def main():
         return b + b"\x00" * (FIELD - len(b))
 
     # ---- 2. 로스터 ----
-    n_rec = 0
+    n_rec = n_yomi = n_zyomi = 0
     with open(iso_path, "r+b") as w:
         for base, stride, sei_off, recs in copies:
             blk = bytearray(s11[base:base + N_REC * stride])
             for n, ks, km, kz in recs:
+                if n >= N_REC:            # 범용 무장 칸 — 블록 밖이라 그 15바이트만 따로 쓴다
+                    w.seek(s11_off + base + n * stride + sei_off)
+                    w.write(enc_field(ks) + enc_field(km) + enc_field(kz))
+                    n_rec += 1
+                    continue
                 r = n * stride + sei_off
                 blk[r:r + FIELD] = enc_field(ks)
                 blk[r + 5:r + 10] = enc_field(km)
                 blk[r + 10:r + 15] = enc_field(kz)
+                # 읽기(+0xF, 카타카나·NUL 끝) → 한글 성+이름 (2026-11-21 하스피: 읽기 칸 카타카나 거슬림 + 정렬 가나다순)
+                #   한자 1자당 가나 ≥1자(2 B) ≥ 한글 1자(2 B) 라 원래 길이 안 — 넘으면 멈춤. 남는 자리는 0.
+                rd = r + 15
+                ln = blk.index(0, rd) - rd
+                if ln and (ks or km):
+                    nb = codec.encode(ks + km, halfwidth_space=False)
+                    if len(nb) > ln:
+                        raise SystemExit("읽기 칸 넘침: %r %dB > %dB" % (ks + km, len(nb), ln))
+                    blk[rd:rd + ln] = nb + bytes(ln - len(nb))
+                    n_yomi += 1
+                # 자(字) 읽기(+0x28, 카타카나·NUL 끝 — 관우 ウンチョウ) → 한글 자 (2026-11-21 하스피 무장정보 «관우(ウンチョウ)»)
+                zd = r + 0x28
+                if kz and zd + 2 < len(blk) and blk[zd] == 0x83:
+                    ze = zd
+                    while ze + 1 < len(blk) and ((blk[ze] == 0x83 and 0x40 <= blk[ze + 1] <= 0x96) or (blk[ze] == 0x81 and blk[ze + 1] == 0x5b)):
+                        ze += 2
+                    if blk[ze] == 0:
+                        zb = codec.encode(kz, halfwidth_space=False)
+                        if len(zb) > ze - zd:
+                            raise SystemExit("자 읽기 칸 넘침: %r %dB > %dB" % (kz, len(zb), ze - zd))
+                        blk[zd:ze] = zb + bytes(ze - zd - len(zb))
+                        n_zyomi += 1
                 n_rec += 1
             w.seek(s11_off + base)
             w.write(bytes(blk))
-    print("로스터 %d레코드 교체 (%d벌)" % (n_rec, len(copies)))
+    print("로스터 %d레코드 교체 (%d벌) · 읽기 한글 %d · 자 읽기 한글 %d" % (n_rec, len(copies), n_yomi, n_zyomi))
 
     # ---- 3. 지명 ----
+    # 읽기(카타카나) 칸도 한글 이름으로(2026-11-21 하스피 «지명 가타카나도 한글로» — 정렬도 가나다순).
+    #   읽기 = 이름 칸 뒤(都市·州·地方 +5 / 港·関 +7), 원본 읽기 바이트가 places_kr 読み 와 같은 자리만. 남는 자리 0.
+    yomi = {}
+    for line in open(os.path.join(REPO, "work/places_kr.tsv"), encoding="utf-8"):
+        q = line.rstrip("\n").split("\t")
+        if len(q) >= 5 and not line.startswith("#") and q[3]:
+            yomi[int(q[1], 16)] = q[3].encode("cp932") + b"\x00"
+    n_py = 0
     with open(iso_path, "r+b") as w:
         for off, jp, kr in places:
             w.seek(s11_off + ENTRY5 + off)
             w.write(codec.encode(kr, halfwidth_space=False) + b"\x00")
-    print("지명 %d곳 교체" % len(places))
+            y = yomi.get(off)
+            src = s11[ENTRY5 + off:ENTRY5 + off + 40]
+            pos = [k for k in (5, 7) if y and src[k:k + len(y)] == y]
+            if not pos:
+                raise SystemExit("지명 읽기 자리 못 찾음: %s" % jp)
+            nb = codec.encode(kr, halfwidth_space=False)
+            if len(nb) > len(y) - 1:
+                raise SystemExit("지명 읽기 칸 넘침: %s %r" % (jp, kr))
+            w.seek(s11_off + ENTRY5 + off + pos[0])
+            w.write(nb + bytes(len(y) - len(nb)))
+            n_py += 1
+    print("지명 %d곳 교체 · 읽기 한글 %d" % (len(places), n_py))
 
     # ---- 3b. entry5 병장·관직 이름 (지명과 같은 테이블, 1:1 독음이라 바이트동일) ----
     with open(iso_path, "r+b") as w:
@@ -823,6 +887,42 @@ def main():
             n_or += len(_boxes)
     print("장식체 %d자 교체 (선후수·합·확인·교대·무장·대·필살)" % n_or)
 
+    # ---- 3z. 이름 칸 뒤 카타카나 «읽기» → 한글 이름 (2026-11-21 하스피 «지명 가타카나도 한글로» 후속) ----
+    #   특기·기교·병장·관직(entry5) · 아이템·작위·전법·국호. 원본 레코드에서 이름 다음 «순수 카타카나+NUL» 덩어리만 읽기로 본다.
+    #   능력 표는 이름 바로 뒤가 설명이라 제외. 한글이 원래 읽기보다 길면 그 칸은 건너뜀(보고).
+    def _kata_run(buf, i):
+        j = i
+        while j + 1 < len(buf) and ((buf[j] == 0x83 and 0x40 <= buf[j + 1] <= 0x96) or (buf[j] == 0x81 and buf[j + 1] in (0x5b, 0x45))):
+            j += 2
+        return j if j - i >= 4 and j < len(buf) and buf[j] == 0 else None
+
+    yomi_jobs = [(ENTRY5 + off, jp, kn) for tbl, off, jp, kn, kd in tokki if tbl in ("특기", "기교")]
+    yomi_jobs += [(ENTRY5 + off, jp, kr) for off, jp, kr, nb in e5names]
+    yomi_jobs += [(off, jp, kr) for off, jp, kr in items] + [(off, jp, kr) for off, jp, kr in ranks]
+    yomi_jobs += [(off, jp, kr) for off, jp, kr in senpou] + [(r[0], r[1], r[2]) for r in kokugo]
+    n_y = n_skip = 0
+    with open(iso_path, "r+b") as w:
+        for noff, jp, kr in yomi_jobs:
+            jb = jp.encode("cp932", "replace")
+            rec = s11[noff:noff + 0x40]
+            st = None
+            for i in range(len(jb) + 1, min(len(rec) - 4, len(jb) + 8)):
+                e = _kata_run(rec, i)
+                if e:
+                    st = i
+                    break
+            if st is None or not kr:
+                continue
+            ln = e - st
+            nb = codec.encode(kr, halfwidth_space=False)
+            if len(nb) > ln:
+                n_skip += 1
+                continue
+            w.seek(s11_off + noff + st)
+            w.write(nb + bytes(ln - len(nb)))
+            n_y += 1
+    print("이름 뒤 읽기(카타카나) → 한글 %d칸 (한글이 길어 건너뜀 %d)" % (n_y, n_skip))
+
     # ---- 4. UI (SLPM_667.01) ----
     # 슬롯 예산 = 원문바이트 + 뒤널. 넘으면 다음 문자열을 밟는다.
     with open(iso_path, "r+b") as w:
@@ -836,6 +936,32 @@ def main():
             w.seek(elf_off + off)
             w.write(b + b"\x00")
     print("UI %d개 교체" % len(ui))
+
+    # ---- 4a. 도시 정보 창 «아이템» 들여쓰기 (UI 쓰기 뒤에 — 같은 칸 남는 자리를 쓴다) ----
+    import item_indent                                            # noqa: E402
+    with open(iso_path, "r+b") as w:
+        item_indent.apply_to_iso(w, elf_off, codec)
+    print("아이템 줄 들여쓰기 고침 (SLPM 코드 2줄 + 라벨 «아이템␣␣», 되읽기 통과)")
+
+    # ---- 4a2. 조사 자동선택 훅 (문자열 그리기 입구 0x16c410, 죽은 함수 3곳에 코드·표) ----
+    #   tools/josa_hook.py — 「을(를)·이(가)·은(는)·와(과)·(으)로·(이)」를 앞 글자 받침대로. 시험 = python tools/josa_hook.py test
+    # ⛔2026-11-21 끔: 넣었던 자리 3곳(0x467220·0x47db20·0x4b04a0)을 OVERLAY2 가 jal 로 부른다(죽은 함수 아님) → 그 화면에서 뻗음.
+    #   진짜 빈자리(실행 파일+OVERLAY1/2+RAM 전부 무참조)로 옮기기 전까지 넣지 않는다 — 원본 바이트 그대로.
+    if JOSA_HOOK_ON:
+        import josa_hook                                              # noqa: E402
+        with open(iso_path, "r+b") as w:
+            _nm, _na, _ns = josa_hook.apply_to_iso(w, elf_off, codec)
+        print("조사 자동선택 훅: 동굴 조각 %d B (%d조각) + 받침 표(음절 %d), 되읽기 통과" % (_nm, _na, _ns))
+    else:
+        print("⚠️조사 자동선택 훅 꺼짐(자리 재선정 중) — 「을(를)」 등이 그대로 보인다")
+
+    # ---- 4a3. 이름 입력 한글 조합 훅 (OVERLAY1 0x1f55f48 + 판 표: 자모·초성별 완성형, 가타카나·특수한자 빈 판) ----
+    #   tools/name_hook.py — 시험 = python tools/name_hook.py test
+    if NAME_HOOK_ON:
+        import name_hook                                              # noqa: E402
+        with open(iso_path, "r+b") as w:
+            _nb, _np, _nd = name_hook.apply_to_iso(w, elf_off, codec)
+        print("이름 입력 조합 훅: 코드·표 %d B (%d조각), 바뀐 바이트 %d, 되읽기 통과" % (_nb, _np, _nd))
 
     # ---- 4b. entry4 블록 압축 해제 버퍼 확대 (SLPM 즉시값 2B) ----
     # 한글이 원본 대비 +19.4% 라 blk0/1/26 이 원래 버퍼(0x13000=77,824)를 넘고,
