@@ -900,7 +900,7 @@ def main():
     yomi_jobs += [(ENTRY5 + off, jp, kr) for off, jp, kr, nb in e5names]
     yomi_jobs += [(off, jp, kr) for off, jp, kr in items] + [(off, jp, kr) for off, jp, kr in ranks]
     yomi_jobs += [(off, jp, kr) for off, jp, kr in senpou] + [(r[0], r[1], r[2]) for r in kokugo]
-    n_y = n_skip = 0
+    n_y = n_skip = n_ovl = 0; ovl = []
     with open(iso_path, "r+b") as w:
         for noff, jp, kr in yomi_jobs:
             jb = jp.encode("cp932", "replace")
@@ -915,13 +915,19 @@ def main():
                 continue
             ln = e - st
             nb = codec.encode(kr, halfwidth_space=False)
+            # ⛔2026-11-21 화살방패 사고: 한글 이름이 일본어 이름보다 길면 이름(+NUL)이 이미 읽기 칸을 덮었다.
+            #   여기서 읽기를 또 쓰면 이름 꼬리가 깨진다(「矢盾」4B 자리에 「화살방패」8B → 기교표 «화살방투ɪ살방패»).
+            if len(nb) + 1 > st:
+                n_ovl += 1
+                ovl.append(kr)
+                continue
             if len(nb) > ln:
                 n_skip += 1
                 continue
             w.seek(s11_off + noff + st)
             w.write(nb + bytes(ln - len(nb)))
             n_y += 1
-    print("이름 뒤 읽기(카타카나) → 한글 %d칸 (한글이 길어 건너뜀 %d)" % (n_y, n_skip))
+    print("이름 뒤 읽기(카타카나) → 한글 %d칸 (한글이 길어 건너뜀 %d · 한글 이름이 읽기 칸을 덮어 건너뜀 %d: %s)" % (n_y, n_skip, n_ovl, " ".join(ovl)))
 
     # ---- 4. UI (SLPM_667.01) ----
     # 슬롯 예산 = 원문바이트 + 뒤널. 넘으면 다음 문자열을 밟는다.
